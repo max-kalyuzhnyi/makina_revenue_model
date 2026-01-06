@@ -31,12 +31,24 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS to reduce top padding
+# Custom CSS to reduce top padding and fix tabs
 st.markdown("""
     <style>
         .block-container {
-            padding-top: 1rem;
+            padding-top: 2rem;
             padding-bottom: 0rem;
+        }
+        /* Make tabs more visible and add spacing */
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 8px;
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+        }
+        .stTabs [data-baseweb="tab"] {
+            height: 50px;
+            padding-left: 20px;
+            padding-right: 20px;
+            font-size: 16px;
         }
     </style>
     """, unsafe_allow_html=True)
