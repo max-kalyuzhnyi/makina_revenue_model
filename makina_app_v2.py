@@ -47,6 +47,31 @@ st.markdown("""
             padding-top: 2rem;
             padding-bottom: 0rem;
         }
+
+        /* Make buttons blue instead of red */
+        .stButton > button {
+            background-color: #0068C9;
+            color: white;
+        }
+        .stButton > button:hover {
+            background-color: #0054A3;
+            color: white;
+        }
+        .stButton > button:active {
+            background-color: #003D75;
+        }
+
+        /* Make sliders blue instead of red */
+        .stSlider > div > div > div > div {
+            background-color: #0068C9;
+        }
+        .stSlider > div > div > div > div > div {
+            background-color: #0068C9;
+        }
+        /* Slider thumb */
+        .stSlider > div > div > div > div[role="slider"] {
+            background-color: #0068C9;
+        }
     </style>
     """, unsafe_allow_html=True)
 
