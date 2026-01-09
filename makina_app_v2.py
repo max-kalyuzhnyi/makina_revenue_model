@@ -61,30 +61,39 @@ st.markdown("""
             background-color: #003D75;
         }
 
-        /* Make sliders blue instead of red */
-        .stSlider > div > div > div > div {
-            background-color: #0068C9;
+        /* Make sliders blue instead of red - comprehensive fix */
+        /* Slider track fill */
+        .stSlider [data-baseweb="slider"] [data-testid="stTickBar"] {
+            background-color: transparent !important;
         }
-        .stSlider > div > div > div > div > div {
-            background-color: #0068C9;
+        .stSlider [data-baseweb="slider"] > div:first-child {
+            background-color: #0068C9 !important;
         }
-        /* Slider thumb */
-        .stSlider > div > div > div > div[role="slider"] {
-            background-color: #0068C9;
-        }
-        /* Slider track fill (left part) */
         .stSlider [data-baseweb="slider"] > div > div {
             background-color: #0068C9 !important;
         }
-        /* Slider numbers/labels */
+        /* Slider thumb (circle) */
+        .stSlider [data-baseweb="slider"] [role="slider"] {
+            background-color: #0068C9 !important;
+        }
+        /* Slider rail (background track) */
+        .stSlider [data-baseweb="slider"] > div:first-child > div:first-child {
+            background-color: #E0E0E0 !important;
+        }
+        /* Remove any red colors */
+        .stSlider * {
+            border-color: #0068C9 !important;
+        }
+        /* Slider value labels */
         .stSlider [data-testid="stTickBar"] > div {
             color: #0068C9 !important;
         }
         .stSlider label {
-            color: #0068C9 !important;
+            color: inherit !important;
         }
-        .stSlider [data-testid="stMarkdownContainer"] {
-            color: #0068C9 !important;
+        /* Caption text below slider */
+        .stSlider + div [data-testid="stMarkdownContainer"] {
+            color: inherit !important;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -266,7 +275,7 @@ def create_flow_chart(metrics, asset_name, dao_perf_share=0.6, dao_mgmt_share=0.
         node=dict(
             pad=15,
             thickness=20,
-            line=dict(color="white", width=0.5),
+            line=dict(color="white", width=0),
             label=labels,
             color=node_colors
         ),
@@ -275,26 +284,24 @@ def create_flow_chart(metrics, asset_name, dao_perf_share=0.6, dao_mgmt_share=0.
             target=targets,
             value=values,
             color='rgba(200, 200, 200, 0.4)'
+        ),
+        textfont=dict(
+            color='black',
+            size=12,
+            family='Arial, sans-serif'
         )
     )])
 
     fig.update_layout(
-        title=f"{asset_name} APR Flow (%)",
+        title=dict(
+            text=f"{asset_name} APR Flow (%)",
+            font=dict(size=14, family="Arial, sans-serif", color="black")
+        ),
         font=dict(size=12, family="Arial, sans-serif", color="black"),
         height=300,
-        margin=dict(l=10, r=10, t=40, b=10)
-    )
-
-    # Improve rendering quality and remove text borders
-    fig.update_layout(
+        margin=dict(l=10, r=10, t=40, b=10),
         paper_bgcolor='white',
         plot_bgcolor='white'
-    )
-
-    # Remove borders from node labels
-    fig.update_traces(
-        node_line_color="white",
-        node_line_width=0
     )
 
     return fig
