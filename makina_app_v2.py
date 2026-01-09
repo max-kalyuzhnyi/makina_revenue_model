@@ -72,6 +72,20 @@ st.markdown("""
         .stSlider > div > div > div > div[role="slider"] {
             background-color: #0068C9;
         }
+        /* Slider track fill (left part) */
+        .stSlider [data-baseweb="slider"] > div > div {
+            background-color: #0068C9 !important;
+        }
+        /* Slider numbers/labels */
+        .stSlider [data-testid="stTickBar"] > div {
+            color: #0068C9 !important;
+        }
+        .stSlider label {
+            color: #0068C9 !important;
+        }
+        .stSlider [data-testid="stMarkdownContainer"] {
+            color: #0068C9 !important;
+        }
     </style>
     """, unsafe_allow_html=True)
 
@@ -266,15 +280,21 @@ def create_flow_chart(metrics, asset_name, dao_perf_share=0.6, dao_mgmt_share=0.
 
     fig.update_layout(
         title=f"{asset_name} APR Flow (%)",
-        font=dict(size=14, family="Arial, sans-serif"),
+        font=dict(size=12, family="Arial, sans-serif", color="black"),
         height=300,
         margin=dict(l=10, r=10, t=40, b=10)
     )
 
-    # Improve rendering quality
+    # Improve rendering quality and remove text borders
     fig.update_layout(
         paper_bgcolor='white',
         plot_bgcolor='white'
+    )
+
+    # Remove borders from node labels
+    fig.update_traces(
+        node_line_color="white",
+        node_line_width=0
     )
 
     return fig
