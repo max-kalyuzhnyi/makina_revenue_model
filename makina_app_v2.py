@@ -241,9 +241,15 @@ def create_flow_chart(metrics, asset_name, dao_perf_share=0.6, dao_mgmt_share=0.
 
     fig.update_layout(
         title=f"{asset_name} APR Flow (%)",
-        font=dict(size=10),
+        font=dict(size=14, family="Arial, sans-serif"),
         height=300,
         margin=dict(l=10, r=10, t=40, b=10)
+    )
+
+    # Improve rendering quality
+    fig.update_layout(
+        paper_bgcolor='white',
+        plot_bgcolor='white'
     )
 
     return fig
