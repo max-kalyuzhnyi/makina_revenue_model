@@ -61,39 +61,14 @@ st.markdown("""
             background-color: #003D75;
         }
 
-        /* Make sliders blue instead of red - comprehensive fix */
-        /* Slider track fill */
-        .stSlider [data-baseweb="slider"] [data-testid="stTickBar"] {
-            background-color: transparent !important;
-        }
-        .stSlider [data-baseweb="slider"] > div:first-child {
+        /* Make sliders blue instead of red */
+        /* Slider thumb (the draggable circle) */
+        div[data-baseweb="slider"] div[role="slider"] {
             background-color: #0068C9 !important;
         }
-        .stSlider [data-baseweb="slider"] > div > div {
-            background-color: #0068C9 !important;
-        }
-        /* Slider thumb (circle) */
-        .stSlider [data-baseweb="slider"] [role="slider"] {
-            background-color: #0068C9 !important;
-        }
-        /* Slider rail (background track) */
-        .stSlider [data-baseweb="slider"] > div:first-child > div:first-child {
-            background-color: #E0E0E0 !important;
-        }
-        /* Remove any red colors */
-        .stSlider * {
-            border-color: #0068C9 !important;
-        }
-        /* Slider value labels */
-        .stSlider [data-testid="stTickBar"] > div {
+        /* Slider track (the filled portion) */
+        div[data-baseweb="slider"] div[data-testid="stThumbValue"] {
             color: #0068C9 !important;
-        }
-        .stSlider label {
-            color: inherit !important;
-        }
-        /* Caption text below slider */
-        .stSlider + div [data-testid="stMarkdownContainer"] {
-            color: inherit !important;
         }
     </style>
     """, unsafe_allow_html=True)
