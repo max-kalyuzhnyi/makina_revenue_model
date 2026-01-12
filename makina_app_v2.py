@@ -71,6 +71,32 @@ st.markdown("""
             color: #0068C9 !important;
         }
     </style>
+    <script>
+    // Format slider numbers with thousand separators
+    function formatSliderNumbers() {
+        const sliders = document.querySelectorAll('[data-testid="stSlider"]');
+        sliders.forEach(slider => {
+            const thumbValue = slider.querySelector('[data-testid="stThumbValue"]');
+            if (thumbValue && thumbValue.textContent) {
+                const num = parseFloat(thumbValue.textContent.replace(/,/g, ''));
+                if (!isNaN(num) && num >= 1000) {
+                    thumbValue.textContent = num.toLocaleString('en-US');
+                }
+            }
+        });
+    }
+
+    // Run on load and on slider changes
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', formatSliderNumbers);
+    } else {
+        formatSliderNumbers();
+    }
+
+    // Watch for changes
+    const observer = new MutationObserver(formatSliderNumbers);
+    observer.observe(document.body, { childList: true, subtree: true });
+    </script>
     """, unsafe_allow_html=True)
 
 # Data loading function
@@ -114,6 +140,7 @@ def load_excel_data(file_path):
         'valuation': {
             'price_rev_ratio': 45.0,
         },
+        'buyback_pct': 70.0,
     }
 
     # 2026 and 2027 - read from Excel but override management fees and APRs
@@ -153,6 +180,7 @@ def load_excel_data(file_path):
             'valuation': {
                 'price_rev_ratio': sheet.cell(4, 8).value or 45.0,
             },
+            'buyback_pct': 70.0,
         }
         data[year] = year_data
 
@@ -286,16 +314,92 @@ if 'data' not in st.session_state:
     excel_file = 'Makina Revenue Generation Estimates.xlsx'
     st.session_state.data = load_excel_data(excel_file)
 
+# Initialize changes tracking
+if 'has_changes' not in st.session_state:
+    st.session_state.has_changes = False
+
+# Track if data has been modified from original (for Reset button)
+if 'data_modified' not in st.session_state:
+    st.session_state.data_modified = False
+
 # Main Dashboard
 st.title("💰 Makina Revenue Model")
 
-# Year selector at top
-selected_year = st.selectbox("Select Year", [2025, 2026, 2027], key='year_selector')
+# Year selector and buttons at top
+if st.session_state.has_changes:
+    col_year, col_apply, col_reset = st.columns([2, 1, 1])
+else:
+    col_year, col_reset = st.columns([3, 1])
+
+with col_year:
+    selected_year = st.selectbox("Select Year", [2026, 2027], index=0, key='year_selector')
+
+if st.session_state.has_changes:
+    with col_apply:
+        st.markdown("<div style='margin-top: 1.7rem;'></div>", unsafe_allow_html=True)
+        if st.button("✓ Apply Changes", type="primary", use_container_width=True):
+            # Apply buyback_pct and price_rev
+            buyback_key = f'buyback_slider_{selected_year}'
+            price_rev_key = f'price_rev_slider_{selected_year}'
+
+            if buyback_key in st.session_state:
+                st.session_state.data[selected_year]['buyback_pct'] = st.session_state[buyback_key]
+            if price_rev_key in st.session_state:
+                st.session_state.data[selected_year]['valuation']['price_rev_ratio'] = st.session_state[price_rev_key]
+
+            # Apply all pending changes from slider values
+            for asset_key in ['usdc', 'eth', 'btc']:
+                # Get slider keys for this asset
+                apr_key = f'{asset_key}_apr_{selected_year}'
+                tvl_key = f'{asset_key}_tvl_{selected_year}'
+                price_key = f'{asset_key}_price_{selected_year}'
+                perf_fee_key = f'{asset_key}_perf_fee_{selected_year}'
+                mgmt_fee_key = f'{asset_key}_mgmt_fee_{selected_year}'
+                dao_perf_key = f'{asset_key}_dao_perf_{selected_year}'
+                dao_mgmt_key = f'{asset_key}_dao_mgmt_{selected_year}'
+
+                # Apply values if keys exist in session state
+                if apr_key in st.session_state:
+                    st.session_state.data[selected_year][asset_key]['performance_growth'] = st.session_state[apr_key] / 100
+                if tvl_key in st.session_state:
+                    st.session_state.data[selected_year][asset_key]['tvl_units'] = st.session_state[tvl_key]
+                if price_key in st.session_state:
+                    st.session_state.data[selected_year][asset_key]['price'] = st.session_state[price_key]
+                if perf_fee_key in st.session_state:
+                    st.session_state.data[selected_year][asset_key]['perf_fee'] = st.session_state[perf_fee_key] / 100
+                if mgmt_fee_key in st.session_state:
+                    st.session_state.data[selected_year][asset_key]['mgmt_fee'] = st.session_state[mgmt_fee_key] / 100
+                if dao_perf_key in st.session_state:
+                    st.session_state.data[selected_year]['fee_split']['perf_dao'] = st.session_state[dao_perf_key] / 100
+                    st.session_state.data[selected_year]['fee_split']['perf_operator'] = (100 - st.session_state[dao_perf_key]) / 100
+                if dao_mgmt_key in st.session_state:
+                    st.session_state.data[selected_year]['fee_split']['mgmt_dao'] = st.session_state[dao_mgmt_key] / 100
+                    st.session_state.data[selected_year]['fee_split']['mgmt_operator'] = (100 - st.session_state[dao_mgmt_key]) / 100
+
+            st.session_state.has_changes = False
+            st.session_state.data_modified = True  # Mark that data differs from original
+            st.success("✅ All changes applied!")
+            st.rerun()
+
+with col_reset:
+    st.markdown("<div style='margin-top: 1.7rem;'></div>", unsafe_allow_html=True)
+    if st.button("🔄 Reset to Original Scenario", use_container_width=True, disabled=not st.session_state.data_modified):
+        # Reload from Excel
+        excel_file = 'Makina Revenue Generation Estimates.xlsx'
+        st.session_state.data = load_excel_data(excel_file)
+        st.session_state.has_changes = False
+        st.session_state.data_modified = False  # Back to original
+        st.success("✅ Reset to original scenario!")
+        st.rerun()
 
 st.markdown("---")
 
 # Get data for selected year
 year_data = st.session_state.data[selected_year]
+
+# Store current slider values to detect changes later
+if 'slider_values' not in st.session_state:
+    st.session_state.slider_values = {}
 
 # Calculate aggregate metrics
 total_dao_revenue = 0
@@ -306,27 +410,73 @@ for asset in ['usdc', 'eth', 'btc']:
     total_tvl += metrics['tvl_usd']
 
 avg_dao_take_rate = (total_dao_revenue / total_tvl * 100) if total_tvl > 0 else 0
-fdv = total_dao_revenue * year_data['valuation']['price_rev_ratio']
 
-# Top 4 metrics
-col1, col2, col3, col4, col5 = st.columns([2, 2, 2, 2, 1])
+# Top 4 sections side-by-side
+section1, section2, section3, section4 = st.columns(4)
 
-with col1:
-    st.metric("Total TVL", format_number(total_tvl))
-with col2:
-    st.metric("Avg DAO Take Rate", f"{avg_dao_take_rate:.2f}%")
-with col3:
+# Section 1: TVL (big number)
+with section1:
+    st.markdown("<h2 style='margin-bottom: 0.5rem;'>TVL</h2>", unsafe_allow_html=True)
+    # Extra large TVL metric taking space of two regular metrics
+    st.markdown(f"<h1 style='font-size: 3.5rem; margin-top: 0; margin-bottom: 0;'>{format_number(total_tvl)}</h1>", unsafe_allow_html=True)
+
+# Section 2: DAO Revenue & Take Rate
+with section2:
+    st.markdown("### DAO Revenue &<br>Take Rate", unsafe_allow_html=True)
+    st.metric("Avg. DAO Take Rate", f"{avg_dao_take_rate:.2f}%")
+    # Add spacing before second metric to align with sections 3 and 4
+    st.markdown("<div style='margin-top: 0.2rem;'></div>", unsafe_allow_html=True)
     st.metric("Annualized DAO Revenue", format_number(total_dao_revenue))
-with col4:
+
+# Section 3: Projected Revenue for Buyback and Token Staking Rewards
+with section3:
+    st.markdown("### Buyback & Staking<br>Rewards", unsafe_allow_html=True)
+
+    # Slider for buyback percentage
+    buyback_pct = st.slider(
+        "% of Revenue",
+        min_value=40.0,
+        max_value=80.0,
+        value=year_data['buyback_pct'],
+        step=1.0,
+        format="%.0f%%",
+        key=f'buyback_slider_{selected_year}'
+    )
+
+    # Calculate buyback revenue
+    buyback_revenue = total_dao_revenue * (buyback_pct / 100)
+
+    st.metric("Revenue for Buyback & Staking", format_number(buyback_revenue))
+
+# Section 4: Projected FDV
+with section4:
+    st.markdown("### Projected FDV<br>&nbsp;", unsafe_allow_html=True)  # &nbsp; for empty second line
+
+    # P/Rev slider
+    price_rev = st.slider(
+        "P/Rev",
+        min_value=15.0,
+        max_value=45.0,
+        value=year_data['valuation']['price_rev_ratio'],
+        step=1.0,
+        format="%.0f",
+        key=f'price_rev_slider_{selected_year}'
+    )
+
+    # Calculate FDV
+    fdv = total_dao_revenue * price_rev
+
     st.metric("FDV", format_number(fdv))
-with col5:
-    price_rev = st.number_input("P/Rev", value=year_data['valuation']['price_rev_ratio'],
-                                min_value=0.0, step=1.0, key='price_rev')
-    if price_rev != year_data['valuation']['price_rev_ratio']:
-        st.session_state.data[selected_year]['valuation']['price_rev_ratio'] = price_rev
-        st.rerun()
 
 st.markdown("---")
+
+# Check for unsaved changes
+has_unsaved_changes = False
+
+# Check if buyback_pct or price_rev changed
+if (abs(buyback_pct - year_data['buyback_pct']) > 0.01 or
+    abs(price_rev - year_data['valuation']['price_rev_ratio']) > 0.01):
+    has_unsaved_changes = True
 
 # Asset sections (USDC, ETH, BTC)
 for asset_key, asset_name in [('usdc', 'USDC'), ('eth', 'ETH'), ('btc', 'BTC')]:
@@ -454,6 +604,16 @@ for asset_key, asset_name in [('usdc', 'USDC'), ('eth', 'ETH'), ('btc', 'BTC')]:
             key=f'{asset_key}_dao_mgmt_{selected_year}'
         )
 
+        # Check if any value has changed from saved data
+        if (abs(apr_input / 100 - asset_data['performance_growth']) > 0.001 or
+            abs(tvl_input - asset_data['tvl_units']) > 0.01 or
+            abs(price_input - asset_data['price']) > 0.01 or
+            abs(perf_fee_input / 100 - asset_data['perf_fee']) > 0.001 or
+            abs(mgmt_fee_input / 100 - asset_data['mgmt_fee']) > 0.0001 or
+            abs(dao_perf_input / 100 - year_data['fee_split']['perf_dao']) > 0.01 or
+            abs(dao_mgmt_input / 100 - year_data['fee_split']['mgmt_dao']) > 0.01):
+            has_unsaved_changes = True
+
         # Update button
         if st.button(f"Update {asset_name}", key=f'update_{asset_key}_{selected_year}'):
             st.session_state.data[selected_year][asset_key]['performance_growth'] = apr_input / 100
@@ -465,6 +625,8 @@ for asset_key, asset_name in [('usdc', 'USDC'), ('eth', 'ETH'), ('btc', 'BTC')]:
             st.session_state.data[selected_year]['fee_split']['mgmt_dao'] = dao_mgmt_input / 100
             st.session_state.data[selected_year]['fee_split']['perf_operator'] = (100 - dao_perf_input) / 100
             st.session_state.data[selected_year]['fee_split']['mgmt_operator'] = (100 - dao_mgmt_input) / 100
+            st.session_state.has_changes = False
+            st.session_state.data_modified = True  # Mark that data differs from original
             st.rerun()
 
     # Calculate current metrics using current input values
@@ -553,17 +715,9 @@ for asset_key, asset_name in [('usdc', 'USDC'), ('eth', 'ETH'), ('btc', 'BTC')]:
 
     st.markdown("---")
 
-# Save/Reset buttons at bottom
-col1, col2, col3 = st.columns([1, 1, 4])
-
-with col1:
-    if st.button("💾 Save All Changes", type="primary"):
-        st.success(f"✅ All changes saved for {selected_year}!")
-
-with col2:
-    if st.button("🔄 Reset to Original"):
-        # Reload from Excel
-        excel_file = 'Makina Revenue Generation Estimates.xlsx'
-        st.session_state.data = load_excel_data(excel_file)
-        st.success(f"✅ Reset to original values!")
-        st.rerun()
+# Update has_changes flag based on detected unsaved changes
+if has_unsaved_changes:
+    st.session_state.has_changes = True
+elif not has_unsaved_changes and st.session_state.has_changes:
+    # Keep the flag if it was set (until Apply or Reset is clicked)
+    pass
